@@ -11,14 +11,14 @@ lock master
 authorization master ( instance, global )
 //etag master <field_name>
 {
-  create;
-  update;
+  create ( precheck );
+  update ( precheck );
   delete;
   /* Combo yang read only + numbering managed
    because naka read only ang key-field, so
    SAP expects us to handle it's value generation */
   field ( numbering : managed, readonly ) TravelUUID;
-  association _Booking { create; }
+  association _Booking { create ( authorization : update ); }
 
   // Draft actions -- mandatory to when using drafts
   //  draft action Resume with additional implementation;
@@ -65,7 +65,7 @@ authorization dependent by _Travel
   field ( numbering : managed, readonly ) BookingUUID;
   field ( readonly ) TravelUUID;
   association _Travel;
-  association _BookingSupplement { create; }
+  association _BookingSupplement { create ( authorization : update ) ; }
 
   mapping for /dmo/a_booking_d
     {
