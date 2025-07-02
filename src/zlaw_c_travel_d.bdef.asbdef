@@ -1,0 +1,29 @@
+projection;
+strict ( 2 );
+
+define behavior for ZLAW_C_Travel_D //alias <alias_name>
+{
+  use create;
+  use update;
+  use delete;
+
+  use association _Booking { create; }
+}
+
+define behavior for ZLAW_C_Booking_D //alias <alias_name>
+{
+  use update;
+  use delete;
+
+  use association _Travel;
+  use association _BookingSupplement { create; }
+}
+
+define behavior for ZLAW_C_BkSuppl_D //alias <alias_name>
+{
+  use update;
+  use delete;
+
+  use association _Travel;
+  use association _Booking;
+}

@@ -1,0 +1,111 @@
+managed; // implementation in class zbp_law_i_travel_d unique;
+strict ( 2 );
+//with draft; // enable drafts - mandatory to in Odata v4
+
+define behavior for ZLAW_I_Travel_D //alias <alias_name>
+implementation in class zcl_bp_i_travel_d unique
+persistent table /dmo/a_travel_d
+//draft table zlaw_travel_d
+lock master
+//total etag LastChangedAt
+authorization master ( instance, global )
+//etag master <field_name>
+{
+  create;
+  update;
+  delete;
+  /* Combo yang read only + numbering managed
+   because naka read only ang key-field, so
+   SAP expects us to handle it's value generation */
+  field ( numbering : managed, readonly ) TravelUUID;
+  association _Booking { create; }
+
+  // Draft actions -- mandatory to when using drafts
+  //  draft action Resume with additional implementation;
+  //  draft action Edit with additional implementation;
+  //  draft action Activate optimized with additional implementation;
+  //  draft action Discard with additional implementation;
+
+  //  draft determine action Prepare
+  //  {
+  //    validation validateCustomer;
+  //    validation ZR_BOOKING_D~validateCustomer;
+  //    validation ZR_BookingSupplement_D~validateSupplement;
+  //  }
+
+  mapping for /dmo/a_travel_d // table name ddic
+    {
+      AgencyID           = agency_id;
+      BeginDate          = begin_date;
+      BookingFee         = booking_fee;
+      CurrencyCode       = currency_code;
+      CustomerID         = customer_id;
+      Description        = description;
+      EndDate            = end_date;
+      LastChangedAt      = last_changed_at;
+      LocalCreatedAt     = local_created_at;
+      LocalCreatedBy     = local_created_by;
+      LocalLastChangedAt = local_last_changed_at;
+      LocalLastChangedBy = local_last_changed_by;
+      OverallStatus      = overall_status;
+      TotalPrice         = total_price;
+      TravelID           = travel_id;
+      TravelUUID         = travel_uuid;
+    }
+}
+
+define behavior for ZLAW_I_Booking_D //alias <alias_name>
+persistent table /dmo/a_booking_d
+lock dependent by _Travel
+authorization dependent by _Travel
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( numbering : managed, readonly ) BookingUUID;
+  field ( readonly ) TravelUUID;
+  association _Travel;
+  association _BookingSupplement { create; }
+
+  mapping for /dmo/a_booking_d
+    {
+      AirlineID          = carrier_id;
+      BookingDate        = booking_date;
+      BookingID          = booking_id;
+      BookingStatus      = booking_status;
+      BookingUUID        = booking_uuid;
+      ConnectionID       = connection_id;
+      CurrencyCode       = currency_code;
+      CustomerID         = customer_id;
+      FlightDate         = flight_date;
+      FlightPrice        = flight_price;
+      LocalLastChangedAt = local_last_changed_at;
+      TravelUUID         = parent_uuid;
+    }
+}
+
+define behavior for ZLAW_I_BkSuppl_D //alias <alias_name>
+persistent table /dmo/a_bksuppl_d
+lock dependent by _Travel
+authorization dependent by _Travel
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( numbering : managed, readonly ) BookSupplUUID;
+  field ( readonly ) TravelUUID, BookingUUID;
+  association _Travel;
+  association _Booking;
+
+  mapping for /dmo/a_bksuppl_d
+    {
+      BookSupplPrice      = price;
+      BookSupplUUID       = booksuppl_uuid;
+      BookingSupplementID = booking_supplement_id;
+      BookingUUID         = parent_uuid;
+      CurrencyCode        = currency_code;
+      LocalLastChangedAt  = local_last_changed_at;
+      SupplementID        = supplement_id;
+      TravelUUID          = root_uuid;
+    }
+}
