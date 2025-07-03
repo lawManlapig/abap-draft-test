@@ -22,6 +22,14 @@ CLASS lhc_ZLAW_I_Travel_D DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS rejectTravel FOR MODIFY
       IMPORTING keys FOR ACTION ZLAW_I_Travel_D~rejectTravel RESULT result.
+    METHODS calculateTotalPrice FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR ZLAW_I_Travel_D~calculateTotalPrice.
+
+    METHODS setStatusOpen FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR ZLAW_I_Travel_D~setStatusOpen.
+
+    METHODS setTravelId FOR DETERMINE ON SAVE
+      IMPORTING keys FOR ZLAW_I_Travel_D~setTravelId.
 
 ENDCLASS.
 
@@ -304,7 +312,7 @@ CLASS lhc_ZLAW_I_Travel_D IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD reCalculateTotalPrice.
- TYPES: BEGIN OF ty_amount_per_currencycode,
+    TYPES: BEGIN OF ty_amount_per_currencycode,
              amount        TYPE /dmo/total_price,
              currency_code TYPE /dmo/currency_code,
            END OF ty_amount_per_currencycode.
@@ -337,17 +345,17 @@ CLASS lhc_ZLAW_I_Travel_D IMPLEMENTATION.
                                                   currency_code = booking-CurrencyCode ) INTO lt_amt_per_ccode.
       ENDLOOP.
 
-*      " Read all associated booking supplements and add them to the total price.
-*      READ ENTITIES OF ZLAW_I_Travel_D IN LOCAL MODE
-*        ENTITY ZLAW_I_Travel_D BY \_BookingSupplement
-*          FIELDS ( BookSupplPrice CurrencyCode )
-*        WITH VALUE #( FOR rba_booking IN lt_bookings ( %tky = rba_booking-%tky ) )
-*        RESULT DATA(lt_bookingsupplements).
-*
-*      LOOP AT lt_bookingsupplements INTO DATA(bookingsupplement) WHERE CurrencyCode IS NOT INITIAL.
-*        COLLECT VALUE ty_amount_per_currencycode( amount        = bookingsupplement-BookSupplPrice
-*                                                  currency_code = bookingsupplement-CurrencyCode ) INTO lt_amt_per_ccode.
-*      ENDLOOP.
+      " Read all associated booking supplements and add them to the total price.
+      READ ENTITIES OF ZLAW_I_Travel_D IN LOCAL MODE
+        ENTITY ZLAW_I_Booking_D BY \_BookingSupplement
+          FIELDS ( BookSupplPrice CurrencyCode )
+        WITH VALUE #( FOR rba_booking IN lt_bookings ( %tky = rba_booking-%tky ) )
+        RESULT DATA(lt_bookingsupplements).
+
+      LOOP AT lt_bookingsupplements INTO DATA(bookingsupplement) WHERE CurrencyCode IS NOT INITIAL.
+        COLLECT VALUE ty_amount_per_currencycode( amount        = bookingsupplement-BookSupplPrice
+                                                  currency_code = bookingsupplement-CurrencyCode ) INTO lt_amt_per_ccode.
+      ENDLOOP.
 
       CLEAR <travel>-TotalPrice.
       LOOP AT lt_amt_per_ccode INTO DATA(single_amount_per_currencycode).
@@ -397,6 +405,65 @@ CLASS lhc_ZLAW_I_Travel_D IMPLEMENTATION.
     result = VALUE #( FOR travel IN lt_read_result ( %tky = travel-%tky
     %param = travel ) ).
 
+  ENDMETHOD.
+
+  METHOD calculateTotalPrice.
+    MODIFY ENTITIES OF ZLAW_I_Travel_D
+    IN LOCAL MODE
+    ENTITY zlaw_i_travel_d
+    EXECUTE reCalculateTotalPrice
+    FROM CORRESPONDING #( keys ).
+  ENDMETHOD.
+
+  METHOD setStatusOpen.
+    " Check if Status is initial
+    READ ENTITIES OF ZLAW_I_Travel_D
+    IN LOCAL MODE
+    ENTITY zlaw_i_travel_d
+    FIELDS ( OverallStatus )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_read_result).
+
+    IF lt_read_result IS NOT INITIAL.
+      DELETE lt_read_result WHERE OverallStatus IS NOT INITIAL.
+
+      IF lt_read_result IS NOT INITIAL.
+        MODIFY ENTITIES OF zlaw_i_travel_d
+          IN LOCAL MODE
+          ENTITY zlaw_i_travel_d
+          UPDATE FIELDS ( OverallStatus )
+          WITH VALUE #( FOR ls_travel IN lt_read_result INDEX INTO lv_index ( %tky = ls_travel-%tky OverallStatus = 'O' ) ).
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD setTravelId.
+    " Check if Travel ID is initial
+    READ ENTITIES OF ZLAW_I_Travel_D
+    IN LOCAL MODE
+    ENTITY zlaw_i_travel_d
+    FIELDS ( TravelID )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(lt_read_result).
+
+    IF lt_read_result IS NOT INITIAL.
+      " Remove the Travel IDs not initial
+      DELETE lt_read_result WHERE TravelID IS NOT INITIAL.
+
+      IF lt_read_result IS NOT INITIAL.
+        SELECT FROM /dmo/a_travel_d
+        FIELDS MAX( travel_id )
+        INTO @DATA(lv_max_travel_id).
+
+        IF sy-subrc IS INITIAL.
+          MODIFY ENTITIES OF zlaw_i_travel_d
+          IN LOCAL MODE
+          ENTITY zlaw_i_travel_d
+          UPDATE FIELDS ( TravelID )
+          WITH VALUE #( FOR ls_travel IN lt_read_result INDEX INTO lv_index ( %tky = ls_travel-%tky TravelID = lv_max_travel_id + lv_index ) ).
+        ENDIF.
+      ENDIF.
+    ENDIF.
   ENDMETHOD.
 
 ENDCLASS.

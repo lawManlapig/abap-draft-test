@@ -20,6 +20,8 @@ authorization master ( instance, global )
   field ( numbering : managed, readonly ) TravelUUID;
   association _Booking { create ( authorization : update ); }
 
+  field ( readonly ) TravelID, OverallStatus;
+
   // Actions with Parameters
   action ( authorization : update ) // we want the auth check to trigger during update so here...
   acceptTravel result [1] $self;
@@ -30,6 +32,12 @@ authorization master ( instance, global )
     result [1] $self;
 
   internal action reCalculateTotalPrice;
+
+  // Determinations
+  determination setTravelId on save { create; update; }
+  determination setStatusOpen on modify { create; update; }
+  determination calculateTotalPrice on modify { create; field BookingFee, CurrencyCode; }
+
 
   // Draft actions -- mandatory to when using drafts
   //  draft action Resume with additional implementation;
