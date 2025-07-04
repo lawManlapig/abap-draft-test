@@ -21,6 +21,7 @@ authorization master ( instance, global )
   association _Booking { create ( authorization : update ); }
 
   field ( readonly ) TravelID, OverallStatus;
+  field ( mandatory ) CustomerID;
 
   // Actions with Parameters
   action ( authorization : update ) // we want the auth check to trigger during update so here...
@@ -37,6 +38,9 @@ authorization master ( instance, global )
   determination setTravelId on save { create; update; }
   determination setStatusOpen on modify { create; update; }
   determination calculateTotalPrice on modify { create; field BookingFee, CurrencyCode; }
+
+  // Validations
+  validation validateCustomer on save { create; field CustomerID; }
 
   // Side-Effects
   side effects
@@ -98,6 +102,8 @@ authorization dependent by _Travel
   determination setBookingDate on save { create; }
   determination calculateTotalPrice on modify { create; field FlightPrice, CurrencyCode; }
 
+  validation validateCustomer on save { create; field CustomerID; }
+
   side effects { field FlightPrice affects field _Travel.TotalPrice; }
 
   mapping for /dmo/a_booking_d
@@ -135,6 +141,8 @@ authorization dependent by _Travel
   determination calculateTotalPrice on modify { create; field CurrencyCode, BookSupplPrice; }
 
   side effects { field BookSupplPrice affects field _Travel.TotalPrice; }
+
+  validation validateSupplement on save { create; field SupplementID; }
 
   mapping for /dmo/a_bksuppl_d
     {

@@ -9,6 +9,8 @@ CLASS lhc_ZLAW_I_Booking_D DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS setBookingNumber FOR DETERMINE ON SAVE
       IMPORTING keys FOR ZLAW_I_Booking_D~setBookingNumber.
+    METHODS validateCustomer FOR VALIDATE ON SAVE
+      IMPORTING keys FOR ZLAW_I_Booking_D~validateCustomer.
 
 ENDCLASS.
 
@@ -94,6 +96,72 @@ CLASS lhc_ZLAW_I_Booking_D IMPLEMENTATION.
            ENTITY ZLAW_I_Booking_D
            UPDATE FIELDS ( BookingID )
            WITH bookings_update.
+  ENDMETHOD.
+
+  METHOD validateCustomer.
+    READ ENTITIES OF ZLAW_I_Travel_D IN LOCAL MODE
+             ENTITY ZLAW_I_Booking_D
+             FIELDS ( CustomerID )
+             WITH CORRESPONDING #( keys )
+             RESULT DATA(bookings).
+
+    READ ENTITIES OF ZLAW_I_Travel_D IN LOCAL MODE
+         ENTITY ZLAW_I_Booking_D BY \_Travel
+         FROM CORRESPONDING #( bookings )
+         LINK DATA(travel_booking_links).
+
+    DATA customers TYPE SORTED TABLE OF /dmo/customer WITH UNIQUE KEY customer_id.
+
+    " Optimization of DB select: extract distinct non-initial customer IDs
+    customers = CORRESPONDING #( bookings DISCARDING DUPLICATES MAPPING customer_id = CustomerID EXCEPT * ).
+    DELETE customers WHERE customer_id IS INITIAL.
+
+    IF customers IS NOT INITIAL.
+      " Check if customer ID exists
+      SELECT FROM /dmo/customer
+        FIELDS customer_id
+        FOR ALL ENTRIES IN @customers
+        WHERE customer_id = @customers-customer_id
+        INTO TABLE @DATA(valid_customers).
+    ENDIF.
+
+    " Raise message for non existing customer id
+    LOOP AT bookings INTO DATA(booking).
+      APPEND VALUE #( %tky        = booking-%tky
+                      %state_area = 'VALIDATE_CUSTOMER' ) TO reported-ZLAW_I_Booking_D.
+
+      IF booking-CustomerID IS INITIAL.
+        APPEND VALUE #( %tky = booking-%tky ) TO failed-ZLAW_I_Booking_D.
+
+        APPEND VALUE #(
+            %tky                = booking-%tky
+            %state_area         = 'VALIDATE_CUSTOMER'
+            %msg                = NEW /dmo/cm_flight_messages( textid   = /dmo/cm_flight_messages=>enter_customer_id
+                                                               severity = if_abap_behv_message=>severity-error )
+            %path               = VALUE #( ZLAW_I_Travel_D-%tky = travel_booking_links[
+                                                                  KEY id
+                                                                  source-%tky = booking-%tky ]-target-%tky )
+            %element-CustomerID = if_abap_behv=>mk-on )
+               TO reported-ZLAW_I_Booking_D.
+
+      ELSEIF booking-CustomerID IS NOT INITIAL AND NOT line_exists( valid_customers[
+                                                                        customer_id = booking-CustomerID ] ).
+        APPEND VALUE #( %tky = booking-%tky ) TO failed-ZLAW_I_Booking_D.
+
+        APPEND VALUE #(
+            %tky                = booking-%tky
+            %state_area         = 'VALIDATE_CUSTOMER'
+            %msg                = NEW /dmo/cm_flight_messages( textid      = /dmo/cm_flight_messages=>customer_unkown
+                                                               customer_id = booking-customerId
+                                                               severity    = if_abap_behv_message=>severity-error )
+            %path               = VALUE #(
+                ZLAW_I_Travel_D-%tky = travel_booking_links[ KEY id
+                                                         source-%tky = booking-%tky ]-target-%tky )
+            %element-CustomerID = if_abap_behv=>mk-on )
+               TO reported-ZLAW_I_Booking_D.
+      ENDIF.
+
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.
