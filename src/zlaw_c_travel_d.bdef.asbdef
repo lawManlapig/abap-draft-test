@@ -2,6 +2,7 @@ projection;
 strict ( 2 );
 
 use side effects; // Needed to enable the side effects from your base BDef
+use draft;
 
 define behavior for ZLAW_C_Travel_D //alias <alias_name>
 {
@@ -13,7 +14,14 @@ define behavior for ZLAW_C_Travel_D //alias <alias_name>
   use action acceptTravel;
   use action rejectTravel;
 
-  use association _Booking { create; }
+  // Need to include if you are using draft
+  use action Activate;
+  use action Discard;
+  use action Edit;
+  use action Prepare;
+  use action Resume;
+
+  use association _Booking { create; with draft; }
 }
 
 define behavior for ZLAW_C_Booking_D //alias <alias_name>
@@ -21,8 +29,8 @@ define behavior for ZLAW_C_Booking_D //alias <alias_name>
   use update;
   use delete;
 
-  use association _Travel;
-  use association _BookingSupplement { create; }
+  use association _Travel { with draft; }
+  use association _BookingSupplement { create; with draft; }
 }
 
 define behavior for ZLAW_C_BkSuppl_D //alias <alias_name>
@@ -30,6 +38,6 @@ define behavior for ZLAW_C_BkSuppl_D //alias <alias_name>
   use update;
   use delete;
 
-  use association _Travel;
-  use association _Booking;
+  use association _Travel { with draft; }
+  use association _Booking { with draft; }
 }

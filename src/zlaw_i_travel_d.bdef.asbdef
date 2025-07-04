@@ -9,7 +9,7 @@ draft table zlaw_travel_d // Mandatory if may draft -- Auto generated naman yan 
 lock master
 total etag LastChangedAt // Mandatory tong ETag pag may Draft
 authorization master ( instance, global )
-//etag master <field_name>
+etag master LocalLastChangedAt
 {
   create ( precheck );
   update ( precheck );
@@ -18,9 +18,21 @@ authorization master ( instance, global )
    because naka read only ang key-field, so
    SAP expects us to handle its value generation */
   field ( numbering : managed, readonly ) TravelUUID;
-  association _Booking { create ( authorization : update ); }
+  association _Booking
+  {
+    create ( authorization : update );
+    with draft; // Mandatory
+  }
 
-  field ( readonly ) TravelID, OverallStatus;
+  field ( readonly )
+  TravelID,
+  OverallStatus,
+  TotalPrice,
+  LastChangedAt,
+  LocalCreatedAt,
+  LocalCreatedBy,
+  LocalLastChangedAt,
+  LocalLastChangedBy;
   field ( mandatory ) CustomerID;
 
   // Actions with Parameters
@@ -51,10 +63,17 @@ authorization master ( instance, global )
 
   // Draft actions -- mandatory to when using drafts
   draft action Resume;
-  draft determine action Prepare;
   draft action Edit;
-  draft action Activate optimized;
+  draft action Activate optimized; // Optimization ng instance
   draft action Discard;
+
+  draft determine action Prepare
+  {
+    // Need ilagay dito ang validations
+    validation validateCustomer;
+    validation ZLAW_I_Booking_D~validateCustomer; // Include also the Assoc Validations
+    validation ZLAW_I_BkSuppl_D~validateSupplement; // Include also the Assoc Validations
+  }
 
   //  draft determine action Prepare
   //  {
@@ -90,14 +109,14 @@ draft table zlaw_booking_d // Mandatory
 persistent table /dmo/a_booking_d
 lock dependent by _Travel
 authorization dependent by _Travel
-//etag master <field_name>
+etag master LocalLastChangedAt
 {
   update;
   delete;
   field ( numbering : managed, readonly ) BookingUUID;
-  field ( readonly ) TravelUUID, BookingID, BookingDate;
-  association _Travel;
-  association _BookingSupplement { create ( authorization : update ); }
+  field ( readonly ) TravelUUID, BookingID, BookingDate, LocalLastChangedAt;
+  association _Travel { with draft; }
+  association _BookingSupplement { create ( authorization : update ); with draft; }
 
   determination setBookingNumber on save { create; }
   determination setBookingDate on save { create; }
@@ -130,14 +149,14 @@ draft table zlaw_bksupp_d // Mandatory
 persistent table /dmo/a_bksuppl_d
 lock dependent by _Travel
 authorization dependent by _Travel
-//etag master <field_name>
+etag master LocalLastChangedAt
 {
   update;
   delete;
   field ( numbering : managed, readonly ) BookSupplUUID;
   field ( readonly ) TravelUUID, BookingUUID, BookingSupplementID, LocalLastChangedAt;
-  association _Travel;
-  association _Booking;
+  association _Travel { with draft; }
+  association _Booking { with draft; }
 
   determination setBookSupplNumber on save { create; }
   determination calculateTotalPrice on modify { create; field CurrencyCode, BookSupplPrice; }
