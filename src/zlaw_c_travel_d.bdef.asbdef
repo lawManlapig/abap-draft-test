@@ -1,6 +1,8 @@
 projection;
 strict ( 2 );
 
+use side effects; // Needed to enable the side effects from your base BDef
+
 define behavior for ZLAW_C_Travel_D //alias <alias_name>
 {
   use create;

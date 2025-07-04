@@ -38,6 +38,13 @@ authorization master ( instance, global )
   determination setStatusOpen on modify { create; update; }
   determination calculateTotalPrice on modify { create; field BookingFee, CurrencyCode; }
 
+  // Side-Effects
+  side effects
+  {
+    field BookingFee // Source/Trigger field
+    affects field TotalPrice; // Target/Field that will be changed
+  }
+
 
   // Draft actions -- mandatory to when using drafts
   //  draft action Resume with additional implementation;
@@ -74,6 +81,7 @@ authorization master ( instance, global )
 }
 
 define behavior for ZLAW_I_Booking_D //alias <alias_name>
+implementation in class zcl_bp_i_booking_d unique
 persistent table /dmo/a_booking_d
 lock dependent by _Travel
 authorization dependent by _Travel
@@ -82,9 +90,15 @@ authorization dependent by _Travel
   update;
   delete;
   field ( numbering : managed, readonly ) BookingUUID;
-  field ( readonly ) TravelUUID;
+  field ( readonly ) TravelUUID, BookingID, BookingDate;
   association _Travel;
   association _BookingSupplement { create ( authorization : update ); }
+
+  determination setBookingNumber on save { create; }
+  determination setBookingDate on save { create; }
+  determination calculateTotalPrice on modify { create; field FlightPrice, CurrencyCode; }
+
+  side effects { field FlightPrice affects field _Travel.TotalPrice; }
 
   mapping for /dmo/a_booking_d
     {
@@ -104,6 +118,7 @@ authorization dependent by _Travel
 }
 
 define behavior for ZLAW_I_BkSuppl_D //alias <alias_name>
+implementation in class zcl_bp_i_booking_supl_d unique
 persistent table /dmo/a_bksuppl_d
 lock dependent by _Travel
 authorization dependent by _Travel
@@ -112,9 +127,14 @@ authorization dependent by _Travel
   update;
   delete;
   field ( numbering : managed, readonly ) BookSupplUUID;
-  field ( readonly ) TravelUUID, BookingUUID;
+  field ( readonly ) TravelUUID, BookingUUID, BookingSupplementID, LocalLastChangedAt;
   association _Travel;
   association _Booking;
+
+  determination setBookSupplNumber on save { create; }
+  determination calculateTotalPrice on modify { create; field CurrencyCode, BookSupplPrice; }
+
+  side effects { field BookSupplPrice affects field _Travel.TotalPrice; }
 
   mapping for /dmo/a_bksuppl_d
     {

@@ -1,0 +1,5 @@
+CLASS zcl_bp_i_booking_d DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF zlaw_i_travel_d.
+ENDCLASS.
+
+CLASS zcl_bp_i_booking_d IMPLEMENTATION.
+ENDCLASS.
