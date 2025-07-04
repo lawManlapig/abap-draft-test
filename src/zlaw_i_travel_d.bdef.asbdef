@@ -1,13 +1,13 @@
 managed; // implementation in class zbp_law_i_travel_d unique;
 strict ( 2 );
-//with draft; // enable drafts - mandatory to in Odata v4
+with draft; // enable drafts - mandatory to in Odata v4
 
 define behavior for ZLAW_I_Travel_D //alias <alias_name>
 implementation in class zcl_bp_i_travel_d unique
 persistent table /dmo/a_travel_d
-//draft table zlaw_travel_d
+draft table zlaw_travel_d // Mandatory if may draft -- Auto generated naman yan via CTRL + 1
 lock master
-//total etag LastChangedAt
+total etag LastChangedAt // Mandatory tong ETag pag may Draft
 authorization master ( instance, global )
 //etag master <field_name>
 {
@@ -49,12 +49,12 @@ authorization master ( instance, global )
     affects field TotalPrice; // Target/Field that will be changed
   }
 
-
   // Draft actions -- mandatory to when using drafts
-  //  draft action Resume with additional implementation;
-  //  draft action Edit with additional implementation;
-  //  draft action Activate optimized with additional implementation;
-  //  draft action Discard with additional implementation;
+  draft action Resume;
+  draft determine action Prepare;
+  draft action Edit;
+  draft action Activate optimized;
+  draft action Discard;
 
   //  draft determine action Prepare
   //  {
@@ -86,6 +86,7 @@ authorization master ( instance, global )
 
 define behavior for ZLAW_I_Booking_D //alias <alias_name>
 implementation in class zcl_bp_i_booking_d unique
+draft table zlaw_booking_d // Mandatory
 persistent table /dmo/a_booking_d
 lock dependent by _Travel
 authorization dependent by _Travel
@@ -125,6 +126,7 @@ authorization dependent by _Travel
 
 define behavior for ZLAW_I_BkSuppl_D //alias <alias_name>
 implementation in class zcl_bp_i_booking_supl_d unique
+draft table zlaw_bksupp_d // Mandatory
 persistent table /dmo/a_bksuppl_d
 lock dependent by _Travel
 authorization dependent by _Travel
